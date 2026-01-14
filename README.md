@@ -25,7 +25,7 @@ Ele combina **gerenciamento de tarefas**, **Kanban** e **Pomodoro** em uma inter
 - **Frontend:** React + JavaScript  
 - **Backend / Auth / Database:** Supabase  
 - **Banco de Dados:** PostgreSQL  
-- **Estilo:** CSS / Tailwind (se aplicável)
+- **Estilo:** CSS 
 - **Hospedagem:** (Vercel / Netlify – em definição)
 
 ---
