@@ -63,7 +63,34 @@ Todas as tarefas são associadas ao usuário autenticado.
 
 ---
 
-## ▶️ Como rodar o projeto localmente
+## 🌱 Status do Projeto
+
+## 🚧 Em desenvolvimento
+Novas funcionalidades planejadas:
+
+Estatísticas de produtividade
+
+Histórico de Pomodoro
+
+Notificações
+
+Modo dark/light
+
+Versão desktop/mobile
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas!
+Sinta-se à vontade para abrir issues ou pull requests.
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+## 👤 Autor
+
+Desenvolvido por Marcus Santos
+📫 Entre em contato para sugestões ou parcerias.
 
 ### 1. Clone o repositório
 ```bash
