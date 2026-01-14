@@ -3,6 +3,10 @@
 **FocusFlow** é um aplicativo web de organização pessoal focado em produtividade, clareza e foco.  
 Ele combina **gerenciamento de tarefas**, **Kanban** e **Pomodoro** em uma interface simples e objetiva.
 
+
+<img width="1305" height="690" alt="image" src="https://github.com/user-attachments/assets/fde538dd-157c-42ff-b87c-0e772d0204b9" />
+
+
 ---
 
 ## 🚀 Funcionalidades
