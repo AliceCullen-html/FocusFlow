@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🧠 FocusFlow
 
-# Run and deploy your AI Studio app
+**FocusFlow** é um aplicativo web de organização pessoal focado em produtividade, clareza e foco.  
+Ele combina **gerenciamento de tarefas**, **Kanban** e **Pomodoro** em uma interface simples e objetiva.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/drive/1mBjN8vyCv72sW9CEaNxXmR81_ITDq1nv
+## 🚀 Funcionalidades
 
-## Run Locally
+- ✅ Cadastro e login de usuários (Supabase Auth)
+- 📝 Gerenciamento de tarefas (criar, editar, concluir e excluir)
+- 📊 Organização visual com Kanban
+- ⏱️ Temporizador Pomodoro integrado
+- 🔁 Recuperação de senha por e-mail
+- 🔒 Dados protegidos e autenticados por usuário
 
-**Prerequisites:**  Node.js
+---
 
+## 🛠️ Tecnologias Utilizadas
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Frontend:** React + JavaScript  
+- **Backend / Auth / Database:** Supabase  
+- **Banco de Dados:** PostgreSQL  
+- **Estilo:** CSS / Tailwind (se aplicável)
+- **Hospedagem:** (Vercel / Netlify – em definição)
+
+---
+
+## 📦 Estrutura do Projeto (exemplo)
+
