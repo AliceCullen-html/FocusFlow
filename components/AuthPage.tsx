@@ -30,9 +30,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, forceResetMode = false }) 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Carrega e-mail salvo e preferência de "Lembrar-me"
   useEffect(() => {
-    const savedEmail = localStorage.getItem('focusflow_saved_email');
+    const savedEmail = localStorage.getItem('taskly_saved_email');
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
@@ -56,54 +55,30 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, forceResetMode = false }) 
           setLoading(false);
           return;
         }
-        
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { 
-            data: { name },
-            emailRedirectTo: window.location.origin 
-          }
+          options: { data: { name }, emailRedirectTo: window.location.origin }
         });
-
-        if (signUpError) {
-          setError(signUpError.message);
-        } else if (data.user) {
+        if (signUpError) setError(signUpError.message);
+        else if (data.user) {
           await supabase.from('profiles').upsert({ id: data.user.id, name });
-          await supabase.from('user_settings').upsert({ 
-            user_id: data.user.id,
-            pomodoro_focus: 25,
-            pomodoro_break: 5,
-            long_break: 15,
-            dark_mode: false,
-            notifications: true
-          });
-
-          setSuccessMessage('Conta criada! Verifique seu e-mail para confirmar.');
+          setSuccessMessage('Conta criada! Verifique seu e-mail.');
           setAuthMode('login');
         }
       } 
       else if (authMode === 'login') {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          setError(signInError.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : signInError.message);
-        } else {
-          // Salva ou remove e-mail do localStorage conforme a preferência
-          if (rememberMe) {
-            localStorage.setItem('focusflow_saved_email', email);
-          } else {
-            localStorage.removeItem('focusflow_saved_email');
-          }
+        if (signInError) setError(signInError.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : signInError.message);
+        else {
+          if (rememberMe) localStorage.setItem('taskly_saved_email', email);
+          else localStorage.removeItem('taskly_saved_email');
           onLogin();
         }
       }
       else if (authMode === 'recover') {
-        const { error: recoverError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}`,
-        });
-        
-        // Feedback neutro por segurança
-        setSuccessMessage('Se este e-mail estiver cadastrado, você receberá um link de recuperação em breve.');
+        await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+        setSuccessMessage('Link de recuperação enviado (se o e-mail existir).');
         setAuthMode('login');
       }
       else if (authMode === 'reset') {
@@ -112,221 +87,133 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, forceResetMode = false }) 
           setLoading(false);
           return;
         }
-        if (password.length < 8) {
-          setError('A senha deve ter pelo menos 8 caracteres.');
-          setLoading(false);
-          return;
-        }
-
         const { error: updateError } = await supabase.auth.updateUser({ password });
-        if (updateError) {
-          setError(updateError.message);
-        } else {
-          setSuccessMessage('Senha atualizada com sucesso! Você já pode acessar seu dashboard.');
+        if (updateError) setError(updateError.message);
+        else {
+          setSuccessMessage('Senha atualizada! Acesse sua conta.');
           setAuthMode('login');
         }
       }
-    } catch (err: any) {
-      setError('Ocorreu um erro inesperado. Tente novamente.');
-      console.error(err);
+    } catch (err) {
+      setError('Ocorreu um erro inesperado.');
     } finally {
       setLoading(false);
     }
   };
 
-  const switchMode = (mode: AuthMode) => {
-    setAuthMode(mode);
-    setError(null);
-    setSuccessMessage(null);
-    setPassword('');
-    setConfirmPassword('');
-  };
+  if (showLanding) return <LandingPage onBack={() => setShowLanding(false)} />;
 
-  if (showLanding) {
-    return <LandingPage onBack={() => setShowLanding(false)} />;
-  }
-
-  const renderForm = () => {
-    switch (authMode) {
-      case 'recover':
-        return (
-          <>
-            <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4">
-              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recuperar Senha</h3>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 px-4">
-                Informe seu e-mail para receber um link de redefinição.
-              </p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Seu E-mail</label>
-                <input required type="email" placeholder="exemplo@flow.com" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={email} onChange={e => setEmail(e.target.value)} />
-              </div>
-              <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
-                {loading ? 'ENVIANDO...' : 'ENVIAR LINK'}
-              </button>
-              <button type="button" onClick={() => switchMode('login')} className="w-full text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors">
-                VOLTAR PARA O LOGIN
-              </button>
-            </form>
-          </>
-        );
-      case 'reset':
-        return (
-          <>
-            <div className="mb-8 text-center animate-in fade-in slide-in-from-top-4">
-              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Nova Senha</h3>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3 px-4">
-                Escolha uma senha forte para proteger seu foco.
-              </p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Nova Senha (mín. 8 caracteres)</label>
-                <input required type="password" placeholder="••••••••" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={password} onChange={e => setPassword(e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Confirmar Nova Senha</label>
-                <input required type="password" placeholder="••••••••" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-              </div>
-              <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">
-                {loading ? 'SALVANDO...' : 'SALVAR NOVA SENHA'}
-              </button>
-            </form>
-          </>
-        );
-      default:
-        const isRegistering = authMode === 'register';
-        return (
-          <>
-            <div className="mb-8 text-center">
-              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                {isRegistering ? 'Criar Conta' : 'Acessar App'}
-              </h3>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">
-                {isRegistering ? 'Sua jornada começa aqui' : 'Que bom ver você de novo'}
-              </p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {isRegistering && (
-                <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Nome Completo</label>
-                  <input required type="text" placeholder="Seu nome" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-              )}
-              
-              <div className="animate-in fade-in slide-in-from-left-4 duration-300 stagger-1">
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">E-mail</label>
-                <input required type="email" placeholder="exemplo@flow.com" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={email} onChange={e => setEmail(e.target.value)} />
-              </div>
-
-              <div className="animate-in fade-in slide-in-from-left-4 duration-300 stagger-2">
-                <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Senha</label>
-                <input required type="password" placeholder="••••••••" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none font-bold text-slate-700 transition-all" value={password} onChange={e => setPassword(e.target.value)} />
-              </div>
-
-              {!isRegistering && (
-                <div className="flex items-center justify-between px-1 animate-in fade-in duration-500">
-                  <label className="flex items-center space-x-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center">
-                      <input 
-                        type="checkbox" 
-                        className="peer appearance-none w-5 h-5 bg-slate-50 border-2 border-slate-200 rounded-lg checked:bg-indigo-600 checked:border-indigo-600 transition-all" 
-                        checked={rememberMe} 
-                        onChange={() => setRememberMe(!rememberMe)}
-                      />
-                      <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-slate-600 uppercase tracking-widest transition-colors">Lembrar-me</span>
-                  </label>
-                  <button type="button" onClick={() => switchMode('recover')} className="text-[9px] font-black text-indigo-500 hover:text-indigo-700 uppercase tracking-widest transition-colors">
-                    Esqueceu sua senha?
-                  </button>
-                </div>
-              )}
-
-              {isRegistering && (
-                <div className="animate-in fade-in slide-in-from-left-4 duration-300 stagger-3">
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 ml-1 uppercase tracking-widest">Confirmar Senha</label>
-                  <input required type="password" placeholder="••••••••" className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl focus:bg-white outline-none font-bold text-slate-700 transition-all ${confirmPassword && password !== confirmPassword ? 'border-rose-200' : 'border-slate-50'}`} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-                </div>
-              )}
-
-              <div className="pt-2">
-                <button disabled={loading} type="submit" className="group w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center relative overflow-hidden">
-                  {loading ? 'PROCESSANDO...' : isRegistering ? 'CRIAR MINHA CONTA' : 'ENTRAR NO APP'}
-                </button>
-              </div>
-            </form>
-            <div className="mt-8 pt-6 border-t border-slate-50">
-              <button onClick={() => switchMode(isRegistering ? 'login' : 'register')} className="w-full text-xs font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest transition-colors flex items-center justify-center space-x-2">
-                <span>{isRegistering ? 'Já tenho conta? Fazer Login' : 'Não tem conta? Registre-se grátis'}</span>
-              </button>
-            </div>
-          </>
-        );
-    }
-  };
+  const inputContainerClass = "relative w-full mb-4";
+  const labelClass = "block text-sm font-bold text-slate-700 mb-2 ml-1";
+  // Alterado para text-base (16px) e padding maior para conforto no toque
+  const inputClass = "w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[20px] focus:border-[#6366f1] focus:ring-4 focus:ring-[#6366f1]/5 outline-none font-medium text-slate-800 transition-all placeholder:text-slate-300 text-base appearance-none";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 md:p-12 overflow-hidden selection:bg-indigo-100 font-sans relative">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-indigo-100/40 rounded-full blur-[120px] animate-pulse-glow"></div>
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '2s' }}></div>
+    <div className="min-h-screen bg-white flex flex-col items-center p-6 md:p-8 font-sans overflow-y-auto">
+      {/* Header Logo */}
+      <div className="w-full flex items-center space-x-3 mt-8 md:mt-12 mb-10 md:mb-14">
+        <div className="w-11 h-11 bg-[#6366f1] rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">TASKLY</h1>
       </div>
 
-      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row items-center justify-center gap-12 md:gap-20">
-        <div className="flex-1 max-w-xl animate-in fade-in slide-in-from-left-8 duration-700">
-          <div className="flex items-center space-x-3 mb-8 group cursor-default">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-200 transition-transform group-hover:scale-110 group-hover:rotate-3">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">FocusFlow</h1>
+      {/* Hero Text */}
+      <div className="w-full max-w-sm mb-10">
+        <h2 className="text-3xl md:text-4xl font-black text-slate-900 leading-[1.1] mb-5 tracking-tight">
+          Domine sua <span className="text-[#6366f1]">Produtividade</span>
+        </h2>
+        <p className="text-slate-500 font-medium leading-relaxed text-sm">
+          Gerencie tarefas, organize notas e maximize seu foco em um só lugar.
+        </p>
+      </div>
+
+      {/* Auth Form Container */}
+      <div className="w-full max-w-sm flex-1">
+        {error && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl animate-in slide-in-from-top-2">
+            <p className="text-xs font-bold text-rose-600 uppercase text-center">{error}</p>
           </div>
-          <h2 className="text-5xl md:text-6xl font-black text-slate-900 leading-[1.05] mb-6 tracking-tight">
-            Domine sua <span className="text-indigo-600">Produtividade</span>
-          </h2>
-          <p className="text-slate-500 text-xl mb-4 leading-relaxed font-medium">
-            Gerencie tarefas, quadros Kanban e maximize seu foco com o Modo Pomodoro e insights inteligentes de IA.
-          </p>
-          <div className="flex flex-wrap items-center gap-6 mb-12">
-            <button onClick={() => setShowLanding(true)} className="flex items-center space-x-2 px-5 py-2.5 border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all rounded-full font-black text-[10px] uppercase tracking-widest group shadow-sm bg-white">
-              <span>Ver como funciona</span>
-              <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        )}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in slide-in-from-top-2">
+            <p className="text-xs font-bold text-emerald-600 uppercase text-center">{successMessage}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {authMode === 'register' && (
+            <div className={inputContainerClass}>
+              <label className={labelClass}>Nome</label>
+              <div className="relative">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <input required type="text" placeholder="Seu nome" className={inputClass} value={name} onChange={e => setName(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          <div className={inputContainerClass}>
+            <label className={labelClass}>E-mail</label>
+            <div className="relative">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
+              <input required type="email" placeholder="seu@email.com" className={inputClass} value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+          </div>
+
+          {(authMode === 'login' || authMode === 'register' || authMode === 'reset') && (
+            <div className={inputContainerClass}>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-bold text-slate-700 ml-1">Senha</label>
+                {authMode === 'login' && (
+                  <button type="button" onClick={() => setAuthMode('recover')} className="text-xs font-bold text-[#6366f1] hover:underline">Esqueceu?</button>
+                )}
+              </div>
+              <div className="relative">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <input required type="password" placeholder="••••••••" className={inputClass} value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {authMode === 'register' && (
+            <div className={inputContainerClass}>
+              <label className={labelClass}>Confirmar Senha</label>
+              <div className="relative">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <input required type="password" placeholder="••••••••" className={inputClass} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          <div className="pt-6 space-y-4">
+            <button disabled={loading} type="submit" className="w-full h-16 bg-[#6366f1] text-white rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
+              <span>{loading ? 'CARREGANDO...' : authMode === 'login' ? 'ENTRAR' : authMode === 'register' ? 'CRIAR CONTA' : 'RECUPERAR'}</span>
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              className="w-full h-16 bg-slate-50 text-slate-900 border border-slate-100 rounded-[20px] font-black text-sm uppercase tracking-widest active:scale-[0.98] transition-all"
+            >
+              {authMode === 'login' ? 'CADASTRAR' : 'VOLTAR PARA LOGIN'}
             </button>
           </div>
-        </div>
-
-        <div className="w-full max-w-md animate-in fade-in zoom-in duration-700 delay-200">
-          <div className="bg-white rounded-[40px] shadow-[0_32px_64px_-16px_rgba(79,70,229,0.15)] p-10 border border-slate-100 relative overflow-hidden transition-all duration-500">
-            {error && (
-              <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl animate-in slide-in-from-top-2">
-                <p className="text-xs font-bold text-rose-600 uppercase text-center">{error}</p>
-              </div>
-            )}
-            {successMessage && (
-              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl animate-in slide-in-from-top-2">
-                <p className="text-xs font-bold text-emerald-600 uppercase text-center">{successMessage}</p>
-              </div>
-            )}
-            {renderForm()}
-          </div>
-        </div>
+        </form>
       </div>
 
-      <footer className="absolute bottom-8 left-0 w-full px-12 flex flex-col md:flex-row items-center justify-between text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
-        <div className="mb-4 md:mb-0">© 2025 FOCUSFLOW</div>
-        <div className="flex space-x-8">
-          <button onClick={() => setShowPrivacy(true)} className="hover:text-indigo-400 transition-colors uppercase">Privacidade</button>
-          <button onClick={() => setShowTerms(true)} className="hover:text-indigo-400 transition-colors uppercase">Termos</button>
-          <button onClick={() => setShowSupport(true)} className="hover:text-indigo-400 transition-colors uppercase">Suporte</button>
-        </div>
+      <footer className="mt-12 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] flex space-x-6 pb-6">
+        <button onClick={() => setShowPrivacy(true)}>PRIVACIDADE</button>
+        <button onClick={() => setShowTerms(true)}>TERMOS</button>
       </footer>
 
       {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}

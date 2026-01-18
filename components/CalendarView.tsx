@@ -1,120 +1,227 @@
 
-import React, { useState } from 'react';
-import { Task, Priority } from '../types';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Task, TaskStatus, Priority } from '../types';
+import TaskCard from './TaskCard';
 
 interface CalendarViewProps {
   tasks: Task[];
   onAddWithDate: (date: Date) => void;
+  onUpdateStatus?: (id: string, status: TaskStatus) => void;
+  onDelete?: (id: string) => void;
+  onEdit?: (task: Task) => void;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onAddWithDate }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+const CalendarView: React.FC<CalendarViewProps> = ({ 
+  tasks, 
+  onAddWithDate,
+  onUpdateStatus = () => {},
+  onDelete = () => {},
+  onEdit = () => {}
+}) => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [currentPickerMonth, setCurrentPickerMonth] = useState(new Date(selectedDate));
+  const pickerRef = useRef<HTMLDivElement>(null);
 
+  // Fecha o seletor ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setIsPickerOpen(false);
+      }
+    };
+    if (isPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isPickerOpen]);
+
+  // Gera os 7 dias da semana ao redor da data selecionada
+  const days = useMemo(() => {
+    const arr = [];
+    const start = new Date(selectedDate);
+    start.setDate(selectedDate.getDate() - 3);
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      arr.push(d);
+    }
+    return arr;
+  }, [selectedDate]);
+
+  // Filtra as tarefas que batem exatamente com a data selecionada
+  const selectedDateStr = selectedDate.toLocaleDateString('en-CA');
+  const dayTasks = useMemo(() => {
+    return tasks.filter(t => t.due_date === selectedDateStr);
+  }, [tasks, selectedDateStr]);
+
+  // Lógica do Picker (Calendário de Grade)
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
-  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const renderPickerGrid = () => {
+    const year = currentPickerMonth.getFullYear();
+    const month = currentPickerMonth.getMonth();
+    const totalDays = daysInMonth(year, month);
+    const startDay = firstDayOfMonth(year, month);
+    const grid = [];
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const totalDays = daysInMonth(year, month);
-  const startDay = firstDayOfMonth(year, month);
-
-  const getPriorityColor = (priority: Priority) => {
-    switch (priority) {
-      case Priority.HIGH: return 'bg-rose-600';
-      case Priority.MEDIUM: return 'bg-amber-500';
-      default: return 'bg-slate-400';
-    }
-  };
-
-  const renderCells = () => {
-    const cells = [];
+    for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="h-8 w-8"></div>);
     
-    // Espaços vazios do mês anterior
-    for (let i = 0; i < startDay; i++) {
-      cells.push(<div key={`empty-${i}`} className="min-h-[120px] bg-slate-50/50 border border-slate-100"></div>);
-    }
-
-    // Dias do mês atual
-    for (let day = 1; day <= totalDays; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      // Fix: Use correct field name due_date as defined in Task interface
-      const dayTasks = tasks.filter(t => t.due_date === dateStr);
-      const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-
-      cells.push(
-        <div 
-          key={day} 
-          onClick={() => onAddWithDate(new Date(year, month, day))}
-          className={`min-h-[120px] p-2 border border-slate-100 bg-white hover:bg-slate-50 transition-colors cursor-pointer group relative`}
+    for (let d = 1; d <= totalDays; d++) {
+      const isSelected = selectedDate.getDate() === d && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
+      grid.push(
+        <button
+          key={d}
+          type="button"
+          onClick={() => {
+            setSelectedDate(new Date(year, month, d));
+            setIsPickerOpen(false);
+          }}
+          className={`h-8 w-8 text-[10px] font-black rounded-xl transition-all flex items-center justify-center ${
+            isSelected ? 'bg-[#6366f1] text-white shadow-lg scale-110' : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'
+          }`}
         >
-          <span className={`text-sm font-bold ${isToday ? 'bg-indigo-600 text-white w-7 h-7 flex items-center justify-center rounded-full shadow-lg' : 'text-slate-500'}`}>
-            {day}
-          </span>
-          
-          <div className="mt-2 space-y-1 overflow-hidden">
-            {dayTasks.slice(0, 3).map(task => (
-              <div 
-                key={task.id} 
-                className={`text-[9px] font-bold truncate px-1.5 py-0.5 rounded border border-white/20 text-white shadow-sm ${getPriorityColor(task.priority)}`}
-              >
-                {task.title}
-              </div>
-            ))}
-            {dayTasks.length > 3 && (
-              <div className="text-[9px] font-bold text-slate-400 px-1 italic">
-                + {dayTasks.length - 3} mais...
-              </div>
-            )}
-          </div>
-
-          <button className="absolute bottom-2 right-2 p-1 bg-indigo-50 text-indigo-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
+          {d}
+        </button>
       );
     }
-
-    return cells;
+    return grid;
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl shadow-slate-200 border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header do Calendário */}
-      <div className="flex items-center justify-between p-6 border-b border-slate-100">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-32">
+      {/* Header */}
+      <div className="flex items-center justify-between relative">
         <div>
-          <h3 className="text-2xl font-black text-slate-800 capitalize tracking-tight">
-            {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-          </h3>
+          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">AGENDA</h1>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {selectedDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
-        <div className="flex space-x-2">
-          <button onClick={prevMonth} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        
+        {/* Ícone de Calendário com Popover */}
+        <div ref={pickerRef} className="relative">
+          <button 
+            onClick={() => {
+              setIsPickerOpen(!isPickerOpen);
+              setCurrentPickerMonth(new Date(selectedDate));
+            }}
+            className={`w-10 h-10 rounded-2xl shadow-sm border flex items-center justify-center transition-all ${
+              isPickerOpen ? 'bg-[#6366f1] text-white border-transparent scale-110' : 'bg-white text-slate-400 border-slate-50 active:scale-90'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
           </button>
-          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">
-            Hoje
-          </button>
-          <button onClick={nextMonth} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </button>
+
+          {isPickerOpen && (
+            <div className="absolute top-12 right-0 w-72 bg-white rounded-[32px] shadow-2xl border border-slate-100 p-5 z-50 animate-in slide-in-from-top-4 duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <button 
+                  onClick={() => setCurrentPickerMonth(new Date(currentPickerMonth.getFullYear(), currentPickerMonth.getMonth() - 1, 1))}
+                  className="p-1.5 hover:bg-slate-50 rounded-xl text-slate-400"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                  {currentPickerMonth.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+                </span>
+                <button 
+                  onClick={() => setCurrentPickerMonth(new Date(currentPickerMonth.getFullYear(), currentPickerMonth.getMonth() + 1, 1))}
+                  className="p-1.5 hover:bg-slate-50 rounded-xl text-slate-400"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
+                  <div key={d} className="h-8 w-8 flex items-center justify-center text-[8px] font-black text-slate-300">{d}</div>
+                ))}
+                {renderPickerGrid()}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Dias da Semana */}
-      <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
-        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-          <div key={d} className="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{d}</div>
-        ))}
+      {/* Seletor de Datas (Horizontal Strip) */}
+      <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 -mx-2 px-2">
+        {days.map((date, idx) => {
+          const isActive = date.toDateString() === selectedDate.toDateString();
+          const isToday = date.toDateString() === new Date().toDateString();
+          
+          return (
+            <button
+              key={idx}
+              onClick={() => setSelectedDate(new Date(date))}
+              className={`flex-shrink-0 w-16 py-5 rounded-[28px] flex flex-col items-center justify-center transition-all duration-300 ${
+                isActive 
+                  ? 'bg-[#6366f1] text-white shadow-xl shadow-indigo-100 scale-110 z-10' 
+                  : 'bg-white text-slate-400 border border-slate-50 hover:border-indigo-100 active:scale-95'
+              }`}
+            >
+              <span className={`text-[9px] font-black uppercase tracking-widest mb-1.5 ${isActive ? 'text-white/70' : 'text-slate-300'}`}>
+                {date.toLocaleDateString('pt-BR', { weekday: 'short' }).split('.')[0].toUpperCase()}
+              </span>
+              <span className="text-lg font-black">{date.getDate()}</span>
+              {isToday && !isActive && <div className="w-1 h-1 bg-indigo-400 rounded-full mt-1"></div>}
+              {isActive && <div className="w-1 h-1 bg-white rounded-full mt-1 animate-pulse"></div>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Grid de Dias */}
-      <div className="grid grid-cols-7">
-        {renderCells()}
+      {/* Lista de Tarefas do Dia */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Compromissos do Dia</h3>
+          <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+            {dayTasks.length} {dayTasks.length === 1 ? 'Tarefa' : 'Tarefas'}
+          </span>
+        </div>
+
+        {dayTasks.length > 0 ? (
+          <div className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {dayTasks.map(task => (
+              <TaskCard 
+                key={task.id} 
+                task={task} 
+                onUpdateStatus={onUpdateStatus} 
+                onDelete={onDelete} 
+                onEdit={onEdit} 
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center bg-white rounded-[40px] border border-slate-100 border-dashed animate-in fade-in zoom-in duration-500">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+               <svg className="w-8 h-8 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+            </div>
+            <p className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-6">Nada agendado para hoje</p>
+            <button 
+              onClick={() => onAddWithDate(selectedDate)}
+              className="px-8 py-3 bg-[#6366f1] text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all"
+            >
+              Adicionar Tarefa
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Floating Action Button */}
+      <button 
+        onClick={() => onAddWithDate(selectedDate)} 
+        className="fixed bottom-28 right-6 w-14 h-14 bg-[#6366f1] text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform shadow-indigo-200 z-40"
+      >
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
     </div>
   );
 };

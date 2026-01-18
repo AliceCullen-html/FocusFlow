@@ -29,11 +29,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus, onDelete, onE
   };
 
   const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+    // Chama o delete imediatamente sem confirm
     onDelete(task.id);
   };
 
-  // Estilo de borda lateral baseado na prioridade
   const priorityAccent = 
     task.priority === Priority.HIGH ? 'border-l-[6px] border-l-rose-600 shadow-rose-100/50' :
     task.priority === Priority.MEDIUM ? 'border-l-[4px] border-l-amber-400' : 
@@ -47,19 +48,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus, onDelete, onE
         ? 'bg-slate-50/80 border-slate-100 opacity-75 border-l-slate-200' 
         : 'bg-white border-white hover:border-indigo-400 shadow-sm'
     }`}>
-      {/* Tooltip de Edição */}
-      <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] font-black px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 uppercase tracking-widest">
-        Clique para editar
-      </div>
-
-      {isAnimating && (
-        <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none z-20">
-          <div className="confetti-effect w-16 h-16 bg-emerald-500/30"></div>
-          <div className="confetti-effect w-24 h-24 bg-indigo-500/20 delay-100"></div>
-          <div className="confetti-effect w-32 h-32 bg-amber-500/10 delay-200"></div>
-        </div>
-      )}
-
       <div className="flex justify-between items-start mb-2">
         <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest border transition-colors ${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] || 'bg-slate-100 text-slate-700'}`}>
           {task.priority}
@@ -67,11 +55,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus, onDelete, onE
         
         <button 
           onClick={handleDelete}
-          className="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
-          title="Excluir"
+          className="p-2 text-rose-300 hover:text-rose-600 rounded-xl bg-rose-50/0 hover:bg-rose-50 transition-all active:scale-90"
+          title="Excluir permanentemente"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </button>
       </div>
@@ -95,40 +83,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateStatus, onDelete, onE
         </div>
         
         <div className="flex items-center space-x-3">
-          {!isDone && task.status !== TaskStatus.TODO && (
-            <button 
-              onClick={(e) => handleAction(e, TaskStatus.TODO)}
-              className="text-[10px] font-black text-slate-400 hover:text-indigo-600 transition-colors tracking-widest"
-            >
-              VOLTAR
-            </button>
-          )}
-
           {!isDone ? (
             <button 
               onClick={task.status === TaskStatus.TODO ? (e) => handleAction(e, TaskStatus.IN_PROGRESS) : handleFinish}
               className={`relative flex items-center justify-center transition-all duration-300 ${
                 task.status === TaskStatus.TODO 
-                  ? 'px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full font-black text-[10px] hover:bg-indigo-100 active:scale-95 tracking-widest border border-indigo-100' 
-                  : `pl-3 pr-4 py-1.5 rounded-full border-2 border-indigo-200 text-indigo-600 font-black text-[10px] hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 active:scale-90 tracking-widest flex items-center space-x-2 shadow-sm ${isAnimating ? 'animate-check-pop bg-emerald-500 border-emerald-500 text-white' : ''}`
+                  ? 'px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full font-black text-[10px] active:scale-95 tracking-widest border border-indigo-100' 
+                  : `pl-3 pr-4 py-1.5 rounded-full border-2 border-indigo-200 text-indigo-600 font-black text-[10px] active:scale-90 tracking-widest flex items-center space-x-2 shadow-sm`
               }`}
             >
-              {task.status === TaskStatus.TODO ? (
-                'COMEÇAR'
-              ) : (
-                <>
-                  <svg className={`w-5 h-5 transition-transform ${isAnimating ? 'scale-110' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className={isAnimating ? 'hidden' : 'block'}>FINALIZAR</span>
-                </>
-              )}
+              {task.status === TaskStatus.TODO ? 'COMEÇAR' : 'FINALIZAR'}
             </button>
           ) : (
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 animate-in zoom-in duration-300 border border-emerald-100">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
+            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
               <span className="text-[10px] font-black tracking-widest">CONCLUÍDO</span>
             </div>
           )}

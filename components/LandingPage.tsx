@@ -24,7 +24,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onBack }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
-            <span className="font-black text-slate-900 tracking-tighter uppercase text-sm">FocusFlow</span>
+            <span className="font-black text-slate-900 tracking-tighter uppercase text-sm">Taskly</span>
           </div>
           <button 
             onClick={onBack}
@@ -116,7 +116,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onBack }) => {
                       </div>
                   ))}
               </div>
-              <p className="text-xs font-bold text-slate-500">+1.000 pessoas já usam o FocusFlow todos os dias.</p>
+              <p className="text-xs font-bold text-slate-500">+1.000 pessoas já usam o Taskly todos os dias.</p>
           </div>
         </div>
       </section>
@@ -124,7 +124,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onBack }) => {
       {/* Benefícios Section */}
       <section className="max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">O que você ganha com o FocusFlow?</h2>
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">O que você ganha com o Taskly?</h2>
             <p className="text-slate-500 font-medium">Recursos pensados para o seu fluxo de trabalho real.</p>
         </div>
 
@@ -202,7 +202,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onBack }) => {
       
       {/* Footer Institucional */}
       <footer className="max-w-6xl mx-auto px-12 pt-20 flex flex-col md:flex-row items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-        <div className="mb-4 md:mb-0">© 2025 FOCUSFLOW - PRODUTIVIDADE E FOCO</div>
+        <div className="mb-4 md:mb-0">© 2025 TASKLY - PRODUTIVIDADE E FOCO</div>
         <div className="flex space-x-8">
           <button onClick={() => setShowPrivacy(true)} className="hover:text-indigo-600 transition-colors uppercase">Privacidade</button>
           <button onClick={() => setShowTerms(true)} className="hover:text-indigo-600 transition-colors uppercase">Termos</button>

@@ -32,6 +32,16 @@ export interface Task {
   completed_at?: string | null;
 }
 
+export type Note = {
+  id: string;
+  user_id?: string;
+  content: string;
+  pinned: boolean;
+  linked_task_id?: string | null;
+  created_at: string;
+  updated_at?: string;
+};
+
 export interface UserSettings {
   user_id: string;
   pomodoro_focus: number;
